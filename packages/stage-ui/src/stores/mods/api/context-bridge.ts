@@ -3,7 +3,7 @@ import type { WebSocketEventOf } from '@proj-airi/server-sdk'
 import type { ChatProvider } from '@xsai-ext/providers/utils'
 import type { UserMessage } from '@xsai/shared-chat'
 
-import type { ChatStreamEvent, ChatStreamEventContext, ContextMessage } from '../../../types/chat'
+import type { ChatStreamEvent, ContextMessage } from '../../../types/chat'
 import type { SparkNotifyPerformanceResult, SparkNotifyReactionOptions } from './spark-notify-reaction'
 
 import { errorMessageFrom } from '@moeru/std'
@@ -26,20 +26,9 @@ import { useLlmStreamingControlStore } from '../../llm-streaming-control'
 import { useConsciousnessStore } from '../../modules/consciousness'
 import { useProvidersStore } from '../../providers'
 import { useModsServerChannelStore } from './channel-server'
+import { cloneContextSnapshot, normalizeContextSnapshot } from './context-bridge-sanitize'
 
-export function normalizeContextSnapshot<C extends Pick<ChatStreamEventContext, 'contexts'>>(contexts: C): C {
-  return {
-    ...contexts,
-    contexts: Object.fromEntries(
-      Object
-        .entries(toRaw(contexts.contexts))
-        .map(([key, ctx]) => [
-          key,
-          ctx.map(c => toRaw(c)),
-        ]),
-    ),
-  }
-}
+export { cloneContextSnapshot, normalizeContextSnapshot }
 
 export const useContextBridgeStore = defineStore('mods:api:context-bridge', () => {
   const consumerRegistrationEvents = [
@@ -701,49 +690,49 @@ export const useContextBridgeStore = defineStore('mods:api:context-bridge', () =
           if (isProcessingRemoteStream)
             return
 
-          broadcastStreamEvent({ type: 'before-compose', message, sessionId: chatSession.activeSessionId, context: structuredClone(normalizeContextSnapshot(context)) })
+          broadcastStreamEvent({ type: 'before-compose', message, sessionId: chatSession.activeSessionId, context: cloneContextSnapshot(context) })
         }),
         chatOrchestrator.onAfterMessageComposed(async (message, context) => {
           if (isProcessingRemoteStream)
             return
 
-          broadcastStreamEvent({ type: 'after-compose', message, sessionId: chatSession.activeSessionId, context: structuredClone(normalizeContextSnapshot(context)) })
+          broadcastStreamEvent({ type: 'after-compose', message, sessionId: chatSession.activeSessionId, context: cloneContextSnapshot(context) })
         }),
         chatOrchestrator.onBeforeSend(async (message, context) => {
           if (isProcessingRemoteStream)
             return
 
-          broadcastStreamEvent({ type: 'before-send', message, sessionId: chatSession.activeSessionId, context: structuredClone(normalizeContextSnapshot(context)) })
+          broadcastStreamEvent({ type: 'before-send', message, sessionId: chatSession.activeSessionId, context: cloneContextSnapshot(context) })
         }),
         chatOrchestrator.onAfterSend(async (message, context) => {
           if (isProcessingRemoteStream)
             return
 
-          broadcastStreamEvent({ type: 'after-send', message, sessionId: chatSession.activeSessionId, context: structuredClone(normalizeContextSnapshot(context)) })
+          broadcastStreamEvent({ type: 'after-send', message, sessionId: chatSession.activeSessionId, context: cloneContextSnapshot(context) })
         }),
         chatOrchestrator.onTokenLiteral(async (literal, context) => {
           if (isProcessingRemoteStream)
             return
 
-          broadcastStreamEvent({ type: 'token-literal', literal, sessionId: chatSession.activeSessionId, context: structuredClone(normalizeContextSnapshot(context)) })
+          broadcastStreamEvent({ type: 'token-literal', literal, sessionId: chatSession.activeSessionId, context: cloneContextSnapshot(context) })
         }),
         chatOrchestrator.onTokenSpecial(async (special, context) => {
           if (isProcessingRemoteStream)
             return
 
-          broadcastStreamEvent({ type: 'token-special', special, sessionId: chatSession.activeSessionId, context: structuredClone(normalizeContextSnapshot(context)) })
+          broadcastStreamEvent({ type: 'token-special', special, sessionId: chatSession.activeSessionId, context: cloneContextSnapshot(context) })
         }),
         chatOrchestrator.onStreamEnd(async (context) => {
           if (isProcessingRemoteStream)
             return
 
-          broadcastStreamEvent({ type: 'stream-end', sessionId: chatSession.activeSessionId, context: structuredClone(normalizeContextSnapshot(context)) })
+          broadcastStreamEvent({ type: 'stream-end', sessionId: chatSession.activeSessionId, context: cloneContextSnapshot(context) })
         }),
         chatOrchestrator.onAssistantResponseEnd(async (message, context) => {
           if (isProcessingRemoteStream)
             return
 
-          broadcastStreamEvent({ type: 'assistant-end', message, sessionId: chatSession.activeSessionId, context: structuredClone(normalizeContextSnapshot(context)) })
+          broadcastStreamEvent({ type: 'assistant-end', message, sessionId: chatSession.activeSessionId, context: cloneContextSnapshot(context) })
         }),
 
         chatOrchestrator.onAssistantMessage(async (message, _messageText, context) => {
